@@ -1,0 +1,140 @@
+﻿@page "/employees"
+@using System.Collections.ObjectModel;
+@using System.Text.Json;
+@using DBServer.Models;
+@using AutoMapper;
+@using System.Net.Http.Json;
+@inject IJSRuntime JsRuntime;
+
+
+@inject IHttpClientFactory _httpClientFactory;
+@inject IMapper _mapper;
+
+@if (_allEmployees == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+<div class="container">
+    <button class="btn btn-primary"
+       @onclick="() => OnEditing()">Add</button>
+    <div class="row">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>LastName</th>
+                    <th>FirstName</th>
+                    <th>BirthDate</th>
+                    <th>City</th>
+                    <th>Region</th>
+                    <th>Country</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var employee in _allEmployees)
+                {
+                    <tr>
+                        <td width="200">
+                            <button class="btn btn-primary"
+                               @onclick="() => OnEditing(employee)">Editing</button>
+                            <button class="btn btn-primary"
+                               @onclick="() => OnDelete(employee)">Delete</button>
+                        </td>
+                        <td>@employee.LastName</td>
+                        <td>@employee.FirstName</td>
+                        <td>@employee.BirthDate?.ToShortDateString()</td>
+                        <td>@employee.City</td>
+                        <td>@employee.Region</td>
+                        <td>@employee.Country</td>
+                        <td>@employee.Notes</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+}
+
+
+
+@code {
+    private ObservableCollection<Employee> _allEmployees;
+    private string _getAllUrl = "/employees/get";
+    private string _insertUrl = "/employees/add";
+    private string _updateUrl = "/employees/update";
+    private string _deleteUrl = "/employees/delete";
+    private Employee _selectedEmployee;
+    private bool _showEditForm;
+    private const string _httpClientName = "Server";
+
+    [CascadingParameter]
+    public IModalService Modal { get; set; }
+
+    protected override Task OnInitializedAsync()
+    {
+        return RefreshAllData();
+    }
+
+    private async void OnEditing(Employee employee = null)
+    {
+        var parameters = new ModalParameters();
+        parameters.Add(nameof(EmployeeEditForm.SelectedEmployee), _mapper.Map<Employee>(employee ?? new Employee()));
+        parameters.Add(nameof(EmployeeEditForm.AllEmployees), _allEmployees.ToList());
+
+        var messageForm = Modal.Show<EmployeeEditForm>((employee == null ? "Add" : "Edit") + " Employee", parameters);
+        var result = await messageForm.Result;
+        if (result.Cancelled)
+            return;
+
+        var url = ((Employee)result.Data).EmployeeId == 0 ? _insertUrl : _updateUrl;
+        var addOrUpdateResponse = await _httpClientFactory.CreateClient(_httpClientName).PostAsync(url,
+            JsonContent.Create(result.Data));
+
+        if (!addOrUpdateResponse.IsSuccessStatusCode)
+        {
+            await JsRuntime.InvokeVoidAsync("alert", "Failed to add or update employee");
+            return;
+        }
+
+        await RefreshAllData();
+        StateHasChanged();
+    }
+
+    private async Task RefreshAllData()
+    {
+        var httpClient = _httpClientFactory.CreateClient(_httpClientName);
+        var allEmployeesResponse = await httpClient.GetAsync(_getAllUrl);
+
+        if (!allEmployeesResponse.IsSuccessStatusCode)
+            return;
+
+        var allDataJson = await allEmployeesResponse.Content.ReadAsStringAsync();
+        if (string.IsNullOrEmpty(allDataJson))
+            return;
+
+        var allEmployees = JsonSerializer.Deserialize<IEnumerable<Employee>>(allDataJson, new JsonSerializerOptions()
+        {
+            PropertyNameCaseInsensitive = true
+        });
+
+        _allEmployees = new ObservableCollection<Employee>(allEmployees ?? new List<Employee>());
+    }
+
+    private async void OnDelete(Employee employee)
+    {
+        var deleteResponse = await _httpClientFactory.CreateClient(_httpClientName)
+            .DeleteAsync(_deleteUrl + $"/" + employee.EmployeeId);
+
+        if (!deleteResponse.IsSuccessStatusCode)
+        {
+            await JsRuntime.InvokeVoidAsync("alert", "Failed to delete employee");
+            return;
+        }
+
+        await RefreshAllData();
+        StateHasChanged();
+    }
+}

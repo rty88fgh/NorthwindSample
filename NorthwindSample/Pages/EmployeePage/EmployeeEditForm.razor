@@ -1,0 +1,83 @@
+﻿@using DBServer.Models;
+
+
+<EditForm Model="@SelectedEmployee" OnValidSubmit="SubmitForm">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <p>
+        <label>
+            First Name:<InputText id="name" @bind-Value="SelectedEmployee.FirstName" />
+        </label>
+    </p>
+    <p>
+        <label>
+            Last Name:<InputText id="name" @bind-Value="SelectedEmployee.LastName" />
+        </label>
+    </p>
+    <p>
+        <label>
+            Birth Date:<InputDate @bind-Value="SelectedEmployee.BirthDate" />
+        </label>
+
+    </p>
+    <p>
+        <label>
+            City:<InputText @bind-Value="SelectedEmployee.City" />
+        </label>
+
+    </p>
+
+    <p>
+        <label>
+            Report To:<InputSelect Value="@SelectedEmployee.ReportsTo"
+             ValueChanged="@((int? value) => OnReportToSelectedChanged(value))"
+             ValueExpression="@(() => SelectedEmployee.ReportsTo)">
+    <option value=@((int?)null)></option>
+    @foreach (var employee in AllEmployees)
+    {
+        if (employee.EmployeeId == SelectedEmployee.EmployeeId)
+            continue;
+
+        if (employee.EmployeeId == SelectedEmployee.ReportsTo)
+        {
+            <option selected value="@employee.EmployeeId">@employee.LastName @employee.FirstName</option>
+        }
+        else
+        {
+            <option value="@employee.EmployeeId">@employee.LastName @employee.FirstName</option>
+        }
+    }
+</InputSelect>
+        </label>
+
+    </p>
+
+    <p>
+        <button class="btn btn-primary">Submit</button>
+        <button @onclick="Cancel" class="btn btn-secondary">Cancel</button>
+    </p>
+</EditForm>
+@code { 
+    [CascadingParameter] BlazoredModalInstance BlazoredModal { get; set; }
+
+    [Parameter]
+    public Employee SelectedEmployee { get; set; } = new Employee();
+
+    [Parameter]
+    public List<Employee> AllEmployees { get; set; } = new List<Employee>();
+
+    protected override Task OnInitializedAsync()
+    {
+        SelectedEmployee = new Employee();
+        return base.OnInitializedAsync();
+    }
+
+    private Task SubmitForm() => BlazoredModal.CloseAsync(ModalResult.Ok(SelectedEmployee));
+    private Task Cancel() => BlazoredModal.CancelAsync();
+
+    private Task OnReportToSelectedChanged(int? employeeId)
+    {
+        SelectedEmployee.ReportsTo = employeeId;
+        return Task.CompletedTask;
+    }
+}

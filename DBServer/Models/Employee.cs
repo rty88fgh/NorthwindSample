@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 #nullable disable
 
@@ -15,7 +16,11 @@ namespace DBServer.Models
         }
 
         public int EmployeeId { get; set; }
+        [Required]
+        [StringLength(20, ErrorMessage = "Last Name is too long.")]
         public string LastName { get; set; }
+        [Required]
+        [StringLength(10, ErrorMessage = "First Name is too long.")]
         public string FirstName { get; set; }
         public string Title { get; set; }
         public string TitleOfCourtesy { get; set; }

@@ -1,3 +1,5 @@
+using Blazored.Modal;
+using DBServer;
 using DBServer.Models;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Components;
@@ -7,9 +9,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 
 namespace NorthwindSample
@@ -27,11 +31,27 @@ namespace NorthwindSample
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddRazorPages();
+            services.AddMvc();
             services.AddServerSideBlazor();
-            services.AddDbContext<DataServerContext>(option => 
+            
+            services.AddDbContext<DataServerContext>(option =>
             {
-                option.UseSqlServer(Configuration.GetConnectionString("DbConnection"));
+                option.UseSqlServer(Configuration.GetConnectionString("Northwind"));
+            });
+            services.AddSingleton<DataServer>();
+            services.AddLogging(loggerBuilder =>
+            {
+                loggerBuilder.AddSerilog();
+            });
+            services.AddHttpClient("Server",client =>
+            {
+                client.BaseAddress = new Uri(Configuration.GetSection("Kestrel").GetSection("Endpoints").GetSection("Https:Url").Value);
+            });
+
+            services.AddBlazoredModal();
+            services.AddAutoMapper(cfg => 
+            {
+                cfg.CreateMap<Employee, Employee>();
             });
         }
 
@@ -54,8 +74,10 @@ namespace NorthwindSample
 
             app.UseRouting();
 
+
             app.UseEndpoints(endpoints =>
             {
+                endpoints.MapControllers();
                 endpoints.MapBlazorHub();
                 endpoints.MapFallbackToPage("/_Host");
             });
