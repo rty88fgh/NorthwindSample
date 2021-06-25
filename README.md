@@ -1,0 +1,7 @@
+target on .Net core 5
+
+真正Web server再NorthWindSample，使用的DB是instnwnd.sql
+
+dbConnection在NorthWindSample/appSettings.json中的NorthWind，預設是使用localdb及使用windows驗證登入，如果需要更改請自行更改
+
+DB讀取的地方都在DbServer這個專案，controller在NorthWindSample/Controller，View部分在NorthWindSample/Pages/EmployeePage
